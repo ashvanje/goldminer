@@ -1,0 +1,157 @@
+function CHookLR(oSpriteHookClosed){
+    var _iRotSpeed;
+    var _iRotFactor;
+    var _iXPos;
+    var _iYPos;
+    var _iDir;
+    var _iMinRopeLen = 50;
+
+    var _fRopeSpeed = HOOK_SPEED;
+
+
+    var _iRopeLen = 0;
+
+    var _vDir = {x:0,y:1};
+    var _oLine;
+    var _oLineGfx;
+    var _oHookSprite;
+
+    this._init = function(oSpriteHookClosed){
+        _iRotFactor = 0;
+        _iRotSpeed = 2;
+
+        _oLineGfx = new createjs.Graphics();
+
+        _oLineGfx.setStrokeStyle(2);
+        _oLineGfx.beginStroke("#000");
+        _oLineGfx.moveTo(GUN_START_X,GUN_START_Y);
+        _oLineGfx.lineTo(GUN_START_X,GUN_START_Y+_iMinRopeLen);
+
+        _oLine = new createjs.Shape(_oLineGfx);
+        s_oStage.addChild(_oLine);
+
+        _oHookSprite = createBitmap(oSpriteHookClosed);
+        _oHookSprite.x = GUN_START_X;
+        _oHookSprite.y = GUN_START_Y;
+        _oHookSprite.scaleX = _oHookSprite.scaleY = 0.6
+        _oHookSprite.rotation = 20;
+        _oHookSprite.regX = oSpriteHookClosed.width/2;
+        _oHookSprite.regY = 0;
+        s_oStage.addChild(_oHookSprite);
+
+        this._drawLine();
+    };
+
+	this.reset = function(){
+		_iRopeLen = 0;
+		_iXPos = GUN_START_X;
+        _iYPos = GUN_START_Y+_iMinRopeLen;
+	};
+
+    this.normalize = function(v){
+
+        var len = Math.sqrt( v.x*v.x+v.y*v.y );
+        if (len > 0 ){
+            v.x/= len; v.y/=len;
+        }
+    };
+
+    this.rotateVector2D = function( iAngle, v ) {
+            var iX = v.x *   Math.cos( iAngle )  + v.y * Math.sin( iAngle );
+            var iY = v.x * (-Math.sin( iAngle )) + v.y * Math.cos( iAngle );
+            v.x = iX;
+            v.y = iY ;
+    };
+
+    this.toDegree = function(iAngleRad){
+        return iAngleRad * (180/Math.PI);
+    };
+
+    this._drawLine = function(){
+        //var fLerp = Math.sin(_iRotFactor);
+    		var xPos = localStorage.getItem('xPos');
+    		var yPos = localStorage.getItem('yPos');
+
+    		//var xPos = 500;
+    		//var yPos = 500;
+        // console.log('localStorage.getItem(xPos) 3 = ' + localStorage.getItem('xPos'));
+        // console.log('localStorage.getItem(yPos) 3 = ' + localStorage.getItem('yPos'));
+
+    		var angle = Math.atan((xPos-GUN_START_X)/(yPos-GUN_START_Y));
+        console.log("xPos = " + xPos + ", yPos = " + yPos);
+        console.log("angle = " + angle);
+    		//var angle = Math.atan((1100-GUN_START_X)/(650-GUN_START_Y));
+    		// var fLerp = Math.sin(angle);
+        _vDir.x = 0;
+        _vDir.y = 1;
+
+        // var fCurAngle = ((Math.PI/2)*0.8) *fLerp; //why 0.8??
+        if(angle<0){
+          angle = Math.PI + angle;
+        }
+        this.rotateVector2D( angle,_vDir);
+        this.normalize(_vDir);
+        var iNewX = _vDir.x * ( _iMinRopeLen + _iRopeLen);
+        var iNewY = _vDir.y * ( _iMinRopeLen + _iRopeLen);
+
+        _iXPos = GUN_START_X+iNewX;
+        _iYPos = GUN_START_Y+iNewY;
+
+        _oLineGfx.clear();
+        _oLineGfx.setStrokeStyle(1);
+        _oLineGfx.beginStroke("#000");
+        _oLineGfx.moveTo(GUN_START_X,GUN_START_Y);
+        _oLineGfx.lineTo(_iXPos,_iYPos);
+
+        _oHookSprite.x = _iXPos;
+        _oHookSprite.y = _iYPos;
+
+        _oHookSprite.rotation = -(this.toDegree(angle));
+    };
+
+    this.updateRotation = function(iSpeed){
+        _iRotFactor += iSpeed;
+
+        this._drawLine();
+    };
+
+    this.updateMove = function(){
+
+        _iRopeLen += _fRopeSpeed;
+
+        this._drawLine();
+
+        if(_oHookSprite.y > CANVAS_HEIGHT || _oHookSprite.x < 310 || _oHookSprite.x>1250 || _oHookSprite.y < 0){
+            s_oGame.hookOutOfBounds();
+        }
+    };
+
+    this.updateMoveBack = function(iSlowDown){
+        _iRopeLen -= (_fRopeSpeed-iSlowDown);
+        // this._drawLine();
+
+        if( _iRopeLen <= 0 ){
+          // console.log("chkpt1: " + _iRopeLen);
+            s_oGame.changeState(STATE_HOOK_ROTATE);
+        } else if (_iRopeLen > 0) {
+          // console.log("chkpt2: " + _iRopeLen);
+            this._drawLine();
+        }
+    };
+
+    this.getPos = function(){
+        return { x: _iXPos,
+                 y: _iYPos};
+    };
+
+
+    this.getCurDir = function(){
+        return _iDir;
+    };
+
+    this.getRotationDeg = function(){
+        return _oHookSprite.rotation;
+    };
+
+    this._init(oSpriteHookClosed);
+}
